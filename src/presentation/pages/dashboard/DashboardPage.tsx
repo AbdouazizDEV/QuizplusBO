@@ -21,6 +21,7 @@ import { Card, CardBody, CardHeader } from '@presentation/components/ui/Card';
 import { Skeleton } from '@presentation/components/ui/Skeleton';
 import { Badge } from '@presentation/components/ui/Badge';
 import { formatNumber, truncate } from '@shared/lib/format';
+import { env } from '@infrastructure/config/env';
 
 interface KpiProps {
   label: string;
@@ -90,7 +91,8 @@ export default function DashboardPage() {
         breadcrumb="Console admin"
         title={
           <span>
-            Bienvenue 👋 <span className="quizz-gradient-text">Quizz+</span>
+            Bienvenue 👋 le backoffice de <span className="quizz-gradient-text">Quizz+</span>
+            
           </span>
         }
         description="Vue d'ensemble du contenu, des défis et de l'audience."
