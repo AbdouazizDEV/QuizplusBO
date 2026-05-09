@@ -29,7 +29,7 @@ const NAV: NavItem[] = [
   { to: '/categories', label: 'Catégories', icon: FolderTree, group: 'Catalogue' },
   { to: '/subcategories', label: 'Sous-catégories', icon: Folder, group: 'Catalogue' },
   { to: '/quizzes', label: 'Quiz', icon: ListTodo, group: 'Contenus' },
-  { to: '/challenges', label: 'Défis', icon: Swords, group: 'Contenus' },
+  { to: '/challenges', label: 'Challenges', icon: Swords, group: 'Contenus' },
   { to: '/competitions', label: 'Compétitions', icon: Trophy, group: 'Contenus' },
   { to: '/profiles', label: 'Profils', icon: Users, group: 'Audience' },
   { to: '/notifications', label: 'Notifications', icon: Bell, group: 'Audience' },
