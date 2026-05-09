@@ -7,7 +7,11 @@ dist
 /.env.development.local
 /.env.test.local
 /.env.production.local
-# Secrets locaux pour les modes définis dans environments/
+# Secrets — les vrais .env du dossier environments/ ne doivent JAMAIS être committés.
+# Seuls les fichiers .env.example sont versionnés (templates avec placeholders).
+environments/.env
+environments/.env.development
+environments/.env.production
 environments/.env.local
 environments/.env.*.local
 coverage

@@ -4,12 +4,27 @@ Les variables `VITE_*` sont chargées depuis ce dossier (voir `envDir` dans `vit
 
 ## Fichiers
 
-| Fichier               | Quand il est utilisé | Rôle |
-| --------------------- | -------------------- | ---- |
-| `.env`                | Toujours en premier (optionnel) | Valeurs communes ; peut rester vide. |
-| `.env.development`    | `npm run dev`        | Backend **local** (`localhost:3000`). |
-| `.env.production`     | `npm run build`      | Backend **Render** + build optimisé. |
-| `.env.*.local`        | Si présent           | **Non versionné** — secrets (clé API, mots de passe). |
+| Fichier                       | Versionné ? | Rôle |
+| ----------------------------- | ----------- | ---- |
+| `.env.example`                | ✅ oui       | Template du `.env` (variables communes, souvent vide). |
+| `.env.development.example`    | ✅ oui       | Template pour le mode `development` (backend local). |
+| `.env.production.example`     | ✅ oui       | Template pour le mode `production` (backend Render). |
+| `.env`                        | ❌ non       | **Local uniquement** — variables communes à tous les modes. |
+| `.env.development`            | ❌ non       | **Local uniquement** — chargé par `npm run dev`. |
+| `.env.production`             | ❌ non       | **Local uniquement** — chargé par `npm run build` / `npm run dev:prod`. |
+| `.env.*.local`                | ❌ non       | **Local uniquement** — overrides personnels. |
+
+> ⚠️ **Aucun secret ne doit être committé.** Les fichiers `.env`, `.env.development` et `.env.production` sont ignorés par Git. En production (Vercel), définissez les variables dans **Project Settings → Environment Variables**.
+
+## Première installation
+
+```bash
+cp environments/.env.example              environments/.env
+cp environments/.env.development.example  environments/.env.development
+cp environments/.env.production.example   environments/.env.production
+```
+
+Puis ouvrez chaque fichier copié et remplissez les valeurs (clé API, identifiants admin).
 
 ## Basculer entre local et production
 
@@ -19,14 +34,15 @@ Les variables `VITE_*` sont chargées depuis ce dossier (voir `envDir` dans `vit
 npm run dev
 ```
 
-### Tester l’UI contre l’API **production** (Render) tout en gardant le serveur Vite local
+Charge `environments/.env.development` → API `http://localhost:3000/api/v1/backoffice`.
+
+### Tester l'UI contre l'API **production** (Render) tout en gardant le serveur Vite local
 
 ```bash
 npm run dev:prod
 ```
 
-Cela lance Vite en mode `production` : les URLs viennent de `environments/.env.production`.  
-Pour vos secrets (clé API, login admin), créez **`environments/.env.production.local`** (copié depuis `.env.production`, puis rempli) — ce fichier est ignoré par Git.
+Vite démarre en mode `production` : les URLs viennent de `environments/.env.production`.
 
 ### Build pour déploiement
 
@@ -34,7 +50,7 @@ Pour vos secrets (clé API, login admin), créez **`environments/.env.production
 npm run build
 ```
 
-Charge `environments/.env.production`. Sur Render / Vercel / GitHub Actions, définissez les mêmes variables `VITE_*` dans l’interface « Environment » du service.
+Charge `environments/.env.production`. **Sur Vercel**, définissez les mêmes variables `VITE_*` dans l'interface « Environment Variables » du projet (scope `Production`).
 
 ## URL de base API
 
