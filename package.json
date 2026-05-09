@@ -6,6 +6,7 @@
   "description": "Backoffice ReactJS pour Quizz+ (admin panel)",
   "scripts": {
     "dev": "vite",
+    "dev:prod": "vite --mode production",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint .",

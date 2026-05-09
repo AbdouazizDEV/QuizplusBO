@@ -1,11 +1,15 @@
 node_modules
 dist
 .DS_Store
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# Ancien emplacement (racine uniquement) — le projet utilise désormais environments/
+/.env
+/.env.local
+/.env.development.local
+/.env.test.local
+/.env.production.local
+# Secrets locaux pour les modes définis dans environments/
+environments/.env.local
+environments/.env.*.local
 coverage
 *.log
 .vite

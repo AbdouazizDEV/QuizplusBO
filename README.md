@@ -37,45 +37,59 @@ Console d'administration React/TypeScript premium pour la plateforme **Quizz+**.
 
 Prérequis : Node.js ≥ 20, npm ≥ 10.
 
+Les variables d’environnement sont centralisées dans le dossier **`environments/`** (voir [environments/README.md](environments/README.md)).
+
 ```bash
 # 1. Installer les dépendances
 npm install
 
-# 2. Configurer l'environnement
-cp .env.example .env
-# Éditez .env pour pointer vers votre backend
+# 2. (Optionnel) Secrets / overrides locaux — non versionnés
+# cp environments/.env.development environments/.env.development.local
+# puis éditez VITE_BACKOFFICE_API_KEY, VITE_ADMIN_EMAIL, VITE_ADMIN_PASSWORD
 
-# 3. Lancer le dev server
+# 3. Lancer le dev server (backend local par défaut)
 npm run dev
 # -> http://localhost:5173
+
+# 4. Pour tester l’UI contre l’API hébergée sur Render
+npm run dev:prod
 ```
 
-Le backend NestJS Quizz+ doit être accessible (`/api/v1/backoffice`). En local, il est généralement servi sur `http://localhost:3000`.
+Le backend Quizz+ expose le backoffice sous **`/api/v1/backoffice`**.  
+`VITE_API_BASE_URL` doit donc se terminer par ce chemin, par exemple :
+
+- Local : `http://localhost:3000/api/v1/backoffice`
+- Production (Render) : `https://quizzplus-api.onrender.com/api/v1/backoffice`
 
 ## Variables d'environnement
 
-Toutes les variables sont préfixées par `VITE_` (Vite n'expose que celles-là côté client).
+Toutes les variables sont préfixées par `VITE_` (Vite n'expose que celles-là côté client). Elles sont définies dans **`environments/.env.development`** et **`environments/.env.production`** (fichiers versionnés avec des valeurs d’exemple ou publiques).
 
 | Variable                  | Obligatoire | Description                                                                                       |
 | ------------------------- | :---------: | ------------------------------------------------------------------------------------------------- |
-| `VITE_API_BASE_URL`       |     ✅      | URL de base **incluant** `/api/v1/backoffice`. Ex. `http://localhost:3000/api/v1/backoffice`.     |
-| `VITE_BACKOFFICE_API_KEY` |     ❌      | Clé API par défaut (header `x-api-key`). Peut être saisie à l'écran de login pour la persister.   |
-| `VITE_DEV_TOOLS`          |     ❌      | `true` pour activer React Query Devtools.                                                          |
+| `VITE_API_BASE_URL`       |     ✅      | URL de base **incluant** `/api/v1/backoffice`.                                                    |
+| `VITE_BACKOFFICE_API_KEY` |     ❌      | Clé API (header `x-api-key`) injectée sur chaque requête. À mettre dans `*.local` ou CI.        |
+| `VITE_ADMIN_EMAIL`        |     ✅*     | Email attendu à l’écran de login (* requis si vous utilisez le login email / mot de passe).     |
+| `VITE_ADMIN_PASSWORD`     |     ✅*     | Mot de passe attendu (* idem).                                                                    |
+| `VITE_DEV_TOOLS`          |     ❌      | `true` pour activer React Query Devtools.                                                         |
 
-> **Sécurité** : la clé API saisie au login est stockée dans `localStorage`. Pour un usage production, préférez un proxy backend (ex. Next.js / Cloudflare Worker) qui injecte la clé côté serveur — ce backoffice est déjà conçu pour fonctionner sans clé en local quand le backend la rend optionnelle.
+Pour des **secrets** (clé API, mot de passe admin), utilisez des fichiers **`environments/.env.development.local`** ou **`environments/.env.production.local`** (ignorés par Git — voir `.gitignore`).
+
+> **Sécurité** : `VITE_*` est embarqué dans le bundle client. Ne commitez pas de secrets dans les fichiers `.env` versionnés ; utilisez les `*.local` ou les variables d’environnement du fournisseur d’hébergement.
 
 ## Scripts
 
-| Script              | Action                                                                |
-| ------------------- | --------------------------------------------------------------------- |
-| `npm run dev`       | Serveur de dev (HMR) sur `http://localhost:5173`                      |
-| `npm run build`     | Typecheck + build production dans `dist/`                             |
-| `npm run preview`   | Preview du build production                                           |
-| `npm run typecheck` | `tsc --noEmit`                                                        |
-| `npm run lint`      | ESLint                                                                |
-| `npm run format`    | Prettier                                                              |
+| Script              | Action                                                                 |
+| ------------------- | ---------------------------------------------------------------------- |
+| `npm run dev`       | Dev + API **locale** (`environments/.env.development`)                 |
+| `npm run dev:prod`  | Dev + API **Render** (`environments/.env.production`) — test rapide    |
+| `npm run build`     | Typecheck + build prod (`environments/.env.production`)                |
+| `npm run preview`   | Preview du build production                                            |
+| `npm run typecheck` | `tsc --noEmit`                                                         |
+| `npm run lint`      | ESLint                                                                 |
+| `npm run format`    | Prettier                                                               |
 | `npm run test`      | Tests unitaires + composants                                          |
-| `npm run ci`        | Pipeline complet (typecheck + lint + tests + build)                   |
+| `npm run ci`        | Pipeline complet (typecheck + lint + tests + build)                    |
 
 ## Architecture (SOLID / hexagonale)
 
@@ -89,7 +103,7 @@ src/
 │   └── ports/        # Interfaces des repositories (contrats)
 │
 ├── application/      # Use-cases : hooks TanStack Query
-│   ├── auth/         # auth-store (Zustand) + validateApiKey
+│   ├── auth/         # auth-store (Zustand) + signInWithCredentials
 │   ├── levels/       # useLevelsQuery, useCreateLevel…
 │   ├── … (un dossier par ressource)
 │   └── query-keys.ts # Clés de cache centralisées
@@ -98,7 +112,7 @@ src/
 │   ├── config/       # Env (VITE_*)
 │   ├── http/         # ApiClient + endpoints + error-mapper
 │   ├── repositories/ # Implémentations HTTP des ports domain/
-│   └── storage/      # localStorage (clé API)
+│   └── storage/      # localStorage (session email admin)
 │
 └── presentation/     # UI React
     ├── components/
@@ -179,9 +193,11 @@ npm run test:coverage  # avec couverture
 ## Build & déploiement
 
 ```bash
-npm run build  # génère dist/
+npm run build  # génère dist/ (charge environments/.env.production)
 npm run preview
 ```
+
+Sur Render / Vercel / GitHub Actions, définissez les mêmes variables `VITE_*` que dans `environments/.env.production` (ou surpassez-les dans l’UI du service). L’URL API production par défaut est : `https://quizzplus-api.onrender.com/api/v1/backoffice`.
 
 Le backoffice est une SPA statique : déployable sur Vercel, Netlify, Cloudflare Pages, S3+CloudFront, ou tout reverse-proxy (Nginx) capable de servir un fichier `index.html` en fallback (history mode).
 

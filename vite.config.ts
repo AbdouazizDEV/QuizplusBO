@@ -4,6 +4,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
+  /** Toutes les variables VITE_* sont lues depuis `environments/` (voir `environments/README.md`). */
+  envDir: path.resolve(__dirname, 'environments'),
   plugins: [react()],
   resolve: {
     alias: {

@@ -21,7 +21,6 @@ import { Card, CardBody, CardHeader } from '@presentation/components/ui/Card';
 import { Skeleton } from '@presentation/components/ui/Skeleton';
 import { Badge } from '@presentation/components/ui/Badge';
 import { formatNumber, truncate } from '@shared/lib/format';
-import { env } from '@infrastructure/config/env';
 
 interface KpiProps {
   label: string;
