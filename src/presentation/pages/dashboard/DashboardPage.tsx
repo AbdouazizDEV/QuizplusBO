@@ -115,7 +115,7 @@ export default function DashboardPage() {
           tone="info"
         />
         <KpiCard
-          label="Défis"
+          label="Challenges"
           value={formatNumber(challenges.data?.total)}
           icon={Swords}
           loading={challenges.isLoading}

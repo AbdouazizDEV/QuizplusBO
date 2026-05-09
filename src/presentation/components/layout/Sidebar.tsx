@@ -125,7 +125,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               <p className="text-2xs font-bold uppercase tracking-widest opacity-80">Quizz+</p>
               <h4 className="mt-0.5 text-sm font-black">Console admin</h4>
               <p className="mt-1 text-2xs font-medium opacity-90">
-                Gérez le contenu et l'audience de l'app mobile en un coup d'œil.
+                Gérez le contenu et l'audience de l'app mobile en un coup d'œil. 
               </p>
             </div>
           </div>
