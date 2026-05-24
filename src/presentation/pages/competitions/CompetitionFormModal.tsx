@@ -1,33 +1,43 @@
-import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useState } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import type { Competition, CompetitionStatus, CreateCompetitionInput } from '@domain/entities/competition';
+import type { Quiz } from '@domain/entities/quiz';
 import { Modal } from '@presentation/components/ui/Modal';
 import { Input } from '@presentation/components/ui/Input';
 import { Textarea } from '@presentation/components/ui/Textarea';
 import { Select } from '@presentation/components/ui/Select';
 import { Button } from '@presentation/components/ui/Button';
-
-const STATUSES = ['scheduled', 'live', 'closed', 'cancelled'] as const;
+import { QuizPickerField } from '@presentation/components/pickers/QuizPickerField';
+import { CategoryPickerField } from '@presentation/components/pickers/CategoryPickerField';
+import {
+  COMPETITION_STATUSES,
+  COMPETITION_STATUS_LABELS,
+} from '@shared/lib/competition-status';
+import { datetimeLocalToIso, isoToDatetimeLocal } from '@shared/lib/date-helpers';
+import { formatQuizLabel } from '@shared/lib/quiz-label';
+import { useQuizzesQuery } from '@application/quizzes/use-quizzes';
+import { useCategoriesQuery } from '@application/categories/use-categories';
+import { useMemo } from 'react';
 
 const schema = z
   .object({
     title: z.string().trim().min(1, 'Le titre est requis').max(160),
     description: z.string().trim().max(500).optional().nullable(),
-    quiz_id: z.string().uuid('UUID invalide').optional().or(z.literal('')),
-    category_id: z.string().uuid('UUID invalide').optional().or(z.literal('')),
-    status: z.enum(STATUSES),
-    starts_at: z.string().optional().nullable(),
-    ends_at: z.string().optional().nullable(),
+    quiz_id: z.string().nullable().optional(),
+    category_id: z.string().nullable().optional(),
+    status: z.enum(COMPETITION_STATUSES),
+    starts_at: z.string().min(1, 'La date de début est requise'),
+    ends_at: z.string().min(1, 'La date de fin est requise'),
     reward_text: z.string().trim().max(280).optional().nullable(),
   })
   .refine(
     (data) => {
       if (!data.starts_at || !data.ends_at) return true;
-      return new Date(data.ends_at).getTime() >= new Date(data.starts_at).getTime();
+      return new Date(data.ends_at).getTime() > new Date(data.starts_at).getTime();
     },
-    { message: 'La date de fin doit être après la date de début', path: ['ends_at'] },
+    { message: 'La date de fin doit être strictement après la date de début', path: ['ends_at'] },
   );
 
 type FormValues = z.infer<typeof schema>;
@@ -40,61 +50,69 @@ interface Props {
   submitting?: boolean;
 }
 
-function isoToInput(v?: string | null): string {
-  if (!v) return '';
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return '';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-function inputToIso(v?: string | null): string | null {
-  if (!v) return null;
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString();
-}
-
 export function CompetitionFormModal({ open, initial, onClose, onSubmit, submitting }: Props) {
+  const quizzes = useQuizzesQuery({ page: 1, limit: 100 });
+  const categories = useCategoriesQuery();
+  const [quizLabel, setQuizLabel] = useState<string | null>(null);
+
+  const quizById = useMemo(() => {
+    const map = new Map<string, Quiz>();
+    (quizzes.data?.items ?? []).forEach((q) => map.set(q.id, q));
+    return map;
+  }, [quizzes.data?.items]);
+
   const {
     register,
     handleSubmit,
     reset,
+    control,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       title: '',
       description: '',
-      quiz_id: '',
-      category_id: '',
-      status: 'scheduled',
+      quiz_id: null,
+      category_id: null,
+      status: 'draft',
       starts_at: '',
       ends_at: '',
       reward_text: '',
     },
   });
 
+  const quizId = watch('quiz_id');
+
   useEffect(() => {
     if (open) {
+      const linkedQuiz = initial?.quiz_id ? quizById.get(initial.quiz_id) : undefined;
+      setQuizLabel(linkedQuiz ? formatQuizLabel(linkedQuiz) : null);
       reset({
         title: initial?.title ?? '',
         description: initial?.description ?? '',
-        quiz_id: initial?.quiz_id ?? '',
-        category_id: initial?.category_id ?? '',
-        status: (initial?.status as CompetitionStatus) ?? 'scheduled',
-        starts_at: isoToInput(initial?.starts_at),
-        ends_at: isoToInput(initial?.ends_at),
+        quiz_id: initial?.quiz_id ?? null,
+        category_id: initial?.category_id ?? null,
+        status: (initial?.status as CompetitionStatus) ?? 'draft',
+        starts_at: isoToDatetimeLocal(initial?.starts_at),
+        ends_at: isoToDatetimeLocal(initial?.ends_at),
         reward_text: initial?.reward_text ?? '',
       });
     }
-  }, [open, initial, reset]);
+  }, [open, initial, reset, quizById]);
+
+  useEffect(() => {
+    if (quizId && quizById.has(quizId)) {
+      setQuizLabel(formatQuizLabel(quizById.get(quizId)!));
+    }
+  }, [quizId, quizById]);
 
   return (
     <Modal
       open={open}
       onClose={onClose}
       size="lg"
-      title={initial ? 'Modifier la compétition' : 'Nouvelle compétition'}
+      title={initial ? 'Modifier le tournoi' : 'Nouveau tournoi'}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={submitting}>
@@ -110,8 +128,8 @@ export function CompetitionFormModal({ open, initial, onClose, onSubmit, submitt
                 quiz_id: values.quiz_id || null,
                 category_id: values.category_id || null,
                 status: values.status,
-                starts_at: inputToIso(values.starts_at),
-                ends_at: inputToIso(values.ends_at),
+                starts_at: datetimeLocalToIso(values.starts_at),
+                ends_at: datetimeLocalToIso(values.ends_at),
                 reward_text: values.reward_text || null,
               });
             })}
@@ -126,7 +144,7 @@ export function CompetitionFormModal({ open, initial, onClose, onSubmit, submitt
           <Input
             {...register('title')}
             label="Titre"
-            placeholder="Compétition hebdomadaire"
+            placeholder="Tournoi Culture Générale"
             error={errors.title?.message}
           />
         </div>
@@ -139,42 +157,63 @@ export function CompetitionFormModal({ open, initial, onClose, onSubmit, submitt
           />
         </div>
 
-        <Input
-          {...register('quiz_id')}
-          label="Quiz (UUID, optionnel)"
-          placeholder="uuid…"
-          error={errors.quiz_id?.message}
+        <Controller
+          control={control}
+          name="quiz_id"
+          render={({ field }) => (
+            <QuizPickerField
+              label="Quiz associé (optionnel)"
+              value={field.value}
+              displayLabel={quizLabel}
+              onChange={(id, quiz) => {
+                field.onChange(id);
+                setQuizLabel(quiz ? formatQuizLabel(quiz) : null);
+              }}
+              error={errors.quiz_id?.message}
+            />
+          )}
         />
-        <Input
-          {...register('category_id')}
-          label="Catégorie (UUID, optionnel)"
-          placeholder="uuid…"
-          error={errors.category_id?.message}
+
+        <Controller
+          control={control}
+          name="category_id"
+          render={({ field }) => (
+            <CategoryPickerField
+              label="Catégorie (optionnel)"
+              value={field.value}
+              onChange={field.onChange}
+              error={errors.category_id?.message}
+              hint={categories.isLoading ? 'Chargement des catégories…' : undefined}
+            />
+          )}
         />
 
         <Select
           {...register('status')}
           label="Statut"
-          options={STATUSES.map((s) => ({ value: s, label: s }))}
+          options={COMPETITION_STATUSES.map((s) => ({
+            value: s,
+            label: COMPETITION_STATUS_LABELS[s],
+          }))}
           error={errors.status?.message}
         />
         <Input
           {...register('reward_text')}
-          label="Récompense (texte)"
-          placeholder="Top 3 récompensés…"
+          label="Récompense"
+          placeholder="Top 3 : badges + points bonus"
           error={errors.reward_text?.message ?? undefined}
         />
 
         <Input
           {...register('starts_at')}
           type="datetime-local"
-          label="Début"
+          label="Date/heure début"
           error={errors.starts_at?.message ?? undefined}
         />
         <Input
           {...register('ends_at')}
           type="datetime-local"
-          label="Fin"
+          label="Date/heure fin"
           error={errors.ends_at?.message ?? undefined}
         />
       </form>

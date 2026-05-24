@@ -13,6 +13,8 @@ const QuizzesPage = lazy(() => import('../pages/quizzes/QuizzesPage'));
 const QuizDetailPage = lazy(() => import('../pages/quizzes/QuizDetailPage'));
 const ChallengesPage = lazy(() => import('../pages/challenges/ChallengesPage'));
 const CompetitionsPage = lazy(() => import('../pages/competitions/CompetitionsPage'));
+const WeeklyChallengesPage = lazy(() => import('../pages/weekly-challenges/WeeklyChallengesPage'));
+const WeeklyChallengeDetailPage = lazy(() => import('../pages/weekly-challenges/WeeklyChallengeDetailPage'));
 const ProfilesPage = lazy(() => import('../pages/profiles/ProfilesPage'));
 const ProfileDetailPage = lazy(() => import('../pages/profiles/ProfileDetailPage'));
 const NotificationsPage = lazy(() => import('../pages/notifications/NotificationsPage'));
@@ -42,6 +44,8 @@ const router = createBrowserRouter([
       { path: '/quizzes', element: <Suspense fallback={<PageLoader />}><QuizzesPage /></Suspense> },
       { path: '/quizzes/:quizId', element: <Suspense fallback={<PageLoader />}><QuizDetailPage /></Suspense> },
       { path: '/challenges', element: <Suspense fallback={<PageLoader />}><ChallengesPage /></Suspense> },
+      { path: '/weekly-challenges', element: <Suspense fallback={<PageLoader />}><WeeklyChallengesPage /></Suspense> },
+      { path: '/weekly-challenges/:id', element: <Suspense fallback={<PageLoader />}><WeeklyChallengeDetailPage /></Suspense> },
       { path: '/competitions', element: <Suspense fallback={<PageLoader />}><CompetitionsPage /></Suspense> },
       { path: '/profiles', element: <Suspense fallback={<PageLoader />}><ProfilesPage /></Suspense> },
       { path: '/profiles/:profileId', element: <Suspense fallback={<PageLoader />}><ProfileDetailPage /></Suspense> },

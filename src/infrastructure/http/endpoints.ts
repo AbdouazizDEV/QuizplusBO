@@ -46,6 +46,15 @@ export const Endpoints = {
     update: (id: string) => `/competitions/${id}`,
     remove: (id: string) => `/competitions/${id}`,
   },
+  weeklyChallenges: {
+    list: '/weekly-challenges',
+    detail: (id: string) => `/weekly-challenges/${id}`,
+    create: '/weekly-challenges',
+    update: (id: string) => `/weekly-challenges/${id}`,
+    remove: (id: string) => `/weekly-challenges/${id}`,
+    quizzes: (id: string) => `/weekly-challenges/${id}/quizzes`,
+    quizLink: (id: string, linkId: string) => `/weekly-challenges/${id}/quizzes/${linkId}`,
+  },
   profiles: {
     list: '/profiles',
     detail: (id: string) => `/profiles/${id}`,

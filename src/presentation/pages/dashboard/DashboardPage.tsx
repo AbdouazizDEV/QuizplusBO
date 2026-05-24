@@ -21,6 +21,8 @@ import { Card, CardBody, CardHeader } from '@presentation/components/ui/Card';
 import { Skeleton } from '@presentation/components/ui/Skeleton';
 import { Badge } from '@presentation/components/ui/Badge';
 import { formatNumber, truncate } from '@shared/lib/format';
+import { COMPETITION_STATUS_LABELS, COMPETITION_STATUS_TONES } from '@shared/lib/competition-status';
+import type { CompetitionStatus } from '@domain/entities/competition';
 
 interface KpiProps {
   label: string;
@@ -115,7 +117,7 @@ export default function DashboardPage() {
           tone="info"
         />
         <KpiCard
-          label="Challenges"
+          label="Duels 1v1"
           value={formatNumber(challenges.data?.total)}
           icon={Swords}
           loading={challenges.isLoading}
@@ -123,7 +125,7 @@ export default function DashboardPage() {
           tone="accent"
         />
         <KpiCard
-          label="Compétitions"
+          label="Tournois"
           value={formatNumber(competitions.data?.total)}
           icon={Trophy}
           loading={competitions.isLoading}
@@ -196,8 +198,8 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader
-            title="Compétitions actives"
-            description="Compétitions live ou planifiées"
+            title="Tournois actifs"
+            description="Tournois en cours ou inscriptions ouvertes"
             actions={
               <Link
                 to="/competitions"
@@ -228,16 +230,10 @@ export default function DashboardPage() {
                   </div>
                   <Badge
                     tone={
-                      c.status === 'live'
-                        ? 'success'
-                        : c.status === 'scheduled'
-                          ? 'info'
-                          : c.status === 'closed'
-                            ? 'neutral'
-                            : 'warning'
+                      COMPETITION_STATUS_TONES[String(c.status) as CompetitionStatus] ?? 'neutral'
                     }
                   >
-                    {String(c.status)}
+                    {COMPETITION_STATUS_LABELS[String(c.status) as CompetitionStatus] ?? String(c.status)}
                   </Badge>
                 </div>
               ))

@@ -1,4 +1,4 @@
-export type CompetitionStatus = 'scheduled' | 'live' | 'closed' | 'cancelled';
+export type CompetitionStatus = 'draft' | 'scheduled' | 'live' | 'completed' | 'cancelled';
 
 export interface Competition {
   id: string;

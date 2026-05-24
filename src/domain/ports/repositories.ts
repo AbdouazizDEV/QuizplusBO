@@ -45,6 +45,15 @@ import type {
   SendNotificationInput,
 } from '../entities/notification';
 import type { UploadImageInput, UploadImageResult } from '../entities/media';
+import type {
+  WeeklyChallenge,
+  WeeklyChallengeListQuery,
+  WeeklyChallengeQuizLink,
+  CreateWeeklyChallengeInput,
+  UpdateWeeklyChallengeInput,
+  CreateWeeklyChallengeQuizLinkInput,
+  UpdateWeeklyChallengeQuizLinkInput,
+} from '../entities/weekly-challenge';
 
 export interface PaginatedQuery {
   page?: number;
@@ -115,4 +124,28 @@ export interface NotificationsRepository {
 
 export interface MediaRepository {
   uploadImage(input: UploadImageInput): Promise<UploadImageResult>;
+}
+
+export interface WeeklyChallengesRepository {
+  list(query?: WeeklyChallengeListQuery): Promise<{
+    items: WeeklyChallenge[];
+    total: number;
+    page: number;
+    limit: number;
+  }>;
+  getById(id: string): Promise<WeeklyChallenge>;
+  create(input: CreateWeeklyChallengeInput): Promise<WeeklyChallenge>;
+  update(id: string, input: UpdateWeeklyChallengeInput): Promise<WeeklyChallenge>;
+  remove(id: string): Promise<void>;
+  listQuizzes(challengeId: string): Promise<WeeklyChallengeQuizLink[]>;
+  addQuiz(
+    challengeId: string,
+    input: CreateWeeklyChallengeQuizLinkInput,
+  ): Promise<WeeklyChallengeQuizLink>;
+  updateQuizLink(
+    challengeId: string,
+    linkId: string,
+    input: UpdateWeeklyChallengeQuizLinkInput,
+  ): Promise<WeeklyChallengeQuizLink>;
+  removeQuizLink(challengeId: string, linkId: string): Promise<void>;
 }

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Pencil, Trash2, Trophy } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Plus, Pencil, Trash2, Trophy, Play, CalendarCheck, Flag, Ban } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   useCompetitionsQuery,
@@ -7,27 +7,36 @@ import {
   useDeleteCompetition,
   useUpdateCompetition,
 } from '@application/competitions/use-competitions';
-import type { Competition } from '@domain/entities/competition';
+import { useQuizzesQuery } from '@application/quizzes/use-quizzes';
+import { useCategoriesQuery } from '@application/categories/use-categories';
+import type { Competition, CompetitionStatus } from '@domain/entities/competition';
 import { PageHeader } from '@presentation/components/data/PageHeader';
 import { DataTable, type Column } from '@presentation/components/data/DataTable';
 import { Pagination } from '@presentation/components/data/Pagination';
 import { Button } from '@presentation/components/ui/Button';
 import { Badge } from '@presentation/components/ui/Badge';
+import { Select } from '@presentation/components/ui/Select';
 import { ConfirmDialog } from '@presentation/components/feedback/ConfirmDialog';
 import { CompetitionFormModal } from './CompetitionFormModal';
 import { toastApiError } from '@shared/lib/api-error-toast';
 import { formatDate, truncate } from '@shared/lib/format';
+import {
+  COMPETITION_STATUSES,
+  COMPETITION_STATUS_LABELS,
+  COMPETITION_STATUS_TONES,
+} from '@shared/lib/competition-status';
+import { formatQuizLabel } from '@shared/lib/quiz-label';
 
-const STATUS_TONE: Record<string, 'info' | 'success' | 'warning' | 'danger' | 'neutral'> = {
-  scheduled: 'info',
-  live: 'success',
-  closed: 'neutral',
-  cancelled: 'danger',
-};
+function statusLabel(status: string): string {
+  return COMPETITION_STATUS_LABELS[status as CompetitionStatus] ?? status;
+}
 
 export default function CompetitionsPage() {
   const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState('');
   const list = useCompetitionsQuery({ page, limit: 20 });
+  const quizzes = useQuizzesQuery({ page: 1, limit: 100 });
+  const categories = useCategoriesQuery();
   const createM = useCreateCompetition();
   const updateM = useUpdateCompetition();
   const deleteM = useDeleteCompetition();
@@ -35,6 +44,24 @@ export default function CompetitionsPage() {
   const [editing, setEditing] = useState<Competition | null>(null);
   const [openForm, setOpenForm] = useState(false);
   const [toDelete, setToDelete] = useState<Competition | null>(null);
+
+  const quizLabelById = useMemo(() => {
+    const map = new Map<string, string>();
+    (quizzes.data?.items ?? []).forEach((q) => map.set(q.id, formatQuizLabel(q)));
+    return map;
+  }, [quizzes.data?.items]);
+
+  const categoryNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    (categories.data ?? []).forEach((c) => map.set(c.id, c.name));
+    return map;
+  }, [categories.data]);
+
+  const filteredItems = useMemo(() => {
+    const items = list.data?.items ?? [];
+    if (!statusFilter) return items;
+    return items.filter((c) => c.status === statusFilter);
+  }, [list.data?.items, statusFilter]);
 
   const onCreate = () => {
     setEditing(null);
@@ -45,10 +72,19 @@ export default function CompetitionsPage() {
     setOpenForm(true);
   };
 
+  const changeStatus = async (c: Competition, status: CompetitionStatus, successMsg: string) => {
+    try {
+      await updateM.mutateAsync({ id: c.id, input: { status } });
+      toast.success(successMsg);
+    } catch (err) {
+      toastApiError(err);
+    }
+  };
+
   const columns: Column<Competition>[] = [
     {
       key: 'title',
-      header: 'Compétition',
+      header: 'Tournoi',
       cell: (c) => (
         <div className="flex items-center gap-3">
           <span className="quizz-gradient inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white">
@@ -64,15 +100,17 @@ export default function CompetitionsPage() {
     {
       key: 'status',
       header: 'Statut',
-      width: '140px',
+      width: '160px',
       cell: (c) => (
-        <Badge tone={STATUS_TONE[String(c.status)] ?? 'neutral'}>{String(c.status)}</Badge>
+        <Badge tone={COMPETITION_STATUS_TONES[String(c.status) as CompetitionStatus] ?? 'neutral'}>
+          {statusLabel(String(c.status))}
+        </Badge>
       ),
     },
     {
       key: 'period',
       header: 'Période',
-      width: '260px',
+      width: '240px',
       cell: (c) => (
         <span className="text-xs text-muted">
           {formatDate(c.starts_at, false)} <span className="px-1">→</span>{' '}
@@ -81,17 +119,76 @@ export default function CompetitionsPage() {
       ),
     },
     {
-      key: 'reward',
-      header: 'Récompense',
-      cell: (c) => <span className="text-sm">{c.reward_text ?? '—'}</span>,
+      key: 'quiz',
+      header: 'Quiz',
+      cell: (c) => (
+        <span className="text-sm">
+          {c.quiz_id ? quizLabelById.get(c.quiz_id) ?? 'Quiz lié' : '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'category',
+      header: 'Catégorie',
+      width: '140px',
+      cell: (c) => (
+        <span className="text-sm">
+          {c.category_id ? categoryNameById.get(c.category_id) ?? '—' : '—'}
+        </span>
+      ),
     },
     {
       key: 'actions',
       header: <span className="sr-only">Actions</span>,
       align: 'right',
-      width: '140px',
+      width: '200px',
       cell: (c) => (
-        <div className="flex items-center justify-end gap-1.5">
+        <div className="flex items-center justify-end gap-1">
+          {c.status === 'draft' ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Publier les inscriptions"
+              title="Publier les inscriptions"
+              onClick={() => changeStatus(c, 'scheduled', 'Inscriptions ouvertes')}
+            >
+              <CalendarCheck className="h-4 w-4" />
+            </Button>
+          ) : null}
+          {c.status === 'scheduled' ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Démarrer"
+              title="Démarrer"
+              onClick={() => changeStatus(c, 'live', 'Tournoi démarré')}
+            >
+              <Play className="h-4 w-4" />
+            </Button>
+          ) : null}
+          {c.status === 'live' ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Clôturer"
+              title="Clôturer"
+              onClick={() => changeStatus(c, 'completed', 'Tournoi clôturé')}
+            >
+              <Flag className="h-4 w-4" />
+            </Button>
+          ) : null}
+          {c.status !== 'cancelled' && c.status !== 'completed' ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Annuler"
+              title="Annuler"
+              className="text-danger hover:bg-danger/10"
+              onClick={() => changeStatus(c, 'cancelled', 'Tournoi annulé')}
+            >
+              <Ban className="h-4 w-4" />
+            </Button>
+          ) : null}
           <Button variant="ghost" size="icon" aria-label="Modifier" onClick={() => onEdit(c)}>
             <Pencil className="h-4 w-4" />
           </Button>
@@ -113,27 +210,47 @@ export default function CompetitionsPage() {
     <div className="space-y-6">
       <PageHeader
         breadcrumb="Contenus"
-        title="Compétitions"
-        description="Animez votre communauté avec des compétitions thématiques."
+        title="Tournois"
+        description="Gérez les tournois visibles dans l'écran mobile « Tournoi »."
         actions={
           <Button variant="gradient" leftIcon={<Plus className="h-4 w-4" />} onClick={onCreate}>
-            Nouvelle compétition
+            Nouveau tournoi
           </Button>
         }
       />
 
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="w-full max-w-xs">
+          <Select
+            label="Filtrer par statut"
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
+            options={[
+              { value: '', label: 'Tous les statuts' },
+              ...COMPETITION_STATUSES.map((s) => ({
+                value: s,
+                label: COMPETITION_STATUS_LABELS[s],
+              })),
+            ]}
+          />
+        </div>
+      </div>
+
       <DataTable<Competition>
         columns={columns}
-        data={list.data?.items}
+        data={filteredItems}
         rowKey={(r) => r.id}
         loading={list.isLoading}
         error={list.error}
         onRetry={() => list.refetch()}
-        emptyTitle="Aucune compétition"
-        emptyDescription="Lancez une compétition pour stimuler la rétention."
+        emptyTitle="Aucun tournoi"
+        emptyDescription="Créez un tournoi pour l'afficher dans l'app mobile."
         emptyAction={
           <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />} onClick={onCreate}>
-            Créer une compétition
+            Créer un tournoi
           </Button>
         }
       />
@@ -154,10 +271,10 @@ export default function CompetitionsPage() {
           try {
             if (editing) {
               await updateM.mutateAsync({ id: editing.id, input: values });
-              toast.success('Compétition mise à jour');
+              toast.success('Tournoi mis à jour');
             } else {
               await createM.mutateAsync(values);
-              toast.success('Compétition créée');
+              toast.success('Tournoi créé');
             }
             setOpenForm(false);
           } catch (err) {
@@ -168,8 +285,8 @@ export default function CompetitionsPage() {
 
       <ConfirmDialog
         open={!!toDelete}
-        title={`Supprimer "${toDelete?.title ?? ''}" ?`}
-        description="Les classements liés peuvent être impactés."
+        title={`Supprimer « ${toDelete?.title ?? ''} » ?`}
+        description="Cette action est irréversible."
         destructive
         loading={deleteM.isPending}
         onCancel={() => setToDelete(null)}
@@ -177,7 +294,7 @@ export default function CompetitionsPage() {
           if (!toDelete) return;
           try {
             await deleteM.mutateAsync(toDelete.id);
-            toast.success('Compétition supprimée');
+            toast.success('Tournoi supprimé');
             setToDelete(null);
           } catch (err) {
             toastApiError(err);
@@ -187,3 +304,4 @@ export default function CompetitionsPage() {
     </div>
   );
 }
+
