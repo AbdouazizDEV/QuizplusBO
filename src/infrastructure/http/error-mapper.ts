@@ -40,6 +40,10 @@ const FIELD_LABELS: Record<string, string> = {
   scheduled_day: 'Le jour planifié',
   day_order: "L'ordre du jour",
   type: 'Le type',
+  challenger_id: 'Le joueur qui lance',
+  challenged_id: 'Le joueur défié',
+  winner_id: 'Le gagnant',
+  user_id: 'Le destinataire',
 };
 
 function translateFieldErrors(fieldErrors: FieldErrors): FieldErrors {

@@ -8,6 +8,7 @@ import { Input } from '@presentation/components/ui/Input';
 import { Textarea } from '@presentation/components/ui/Textarea';
 import { Switch } from '@presentation/components/ui/Switch';
 import { Button } from '@presentation/components/ui/Button';
+import { formatProfileLabel } from '@shared/lib/profile-label';
 
 const schema = z.object({
   is_suspended: z.boolean(),
@@ -77,7 +78,7 @@ export function SuspendProfileModal({ open, profile, onClose, onSubmit, submitti
       title={willSuspend ? 'Suspendre le profil' : 'Réactiver le profil'}
       description={
         profile
-          ? `Action sur ${profile.username ?? profile.full_name ?? profile.id}`
+          ? `Action sur ${formatProfileLabel(profile)}`
           : undefined
       }
       footer={

@@ -1,27 +1,38 @@
-import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useMemo, useState } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import type { Challenge, CreateChallengeInput } from '@domain/entities/challenge';
+import type { Profile } from '@domain/entities/profile';
+import type { Quiz } from '@domain/entities/quiz';
 import { Modal } from '@presentation/components/ui/Modal';
 import { Input } from '@presentation/components/ui/Input';
 import { Select } from '@presentation/components/ui/Select';
 import { Button } from '@presentation/components/ui/Button';
+import { ProfilePickerField } from '@presentation/components/pickers/ProfilePickerField';
+import { QuizPickerField } from '@presentation/components/pickers/QuizPickerField';
+import { CHALLENGE_STATUSES, CHALLENGE_STATUS_LABELS } from '@shared/lib/challenge-status';
+import { formatProfileLabel } from '@shared/lib/profile-label';
+import { formatQuizLabel } from '@shared/lib/quiz-label';
+import { datetimeLocalToIso, isoToDatetimeLocal } from '@shared/lib/date-helpers';
+import { useProfilesQuery } from '@application/profiles/use-profiles';
+import { useQuizzesQuery } from '@application/quizzes/use-quizzes';
 
-const uuid = z.string().uuid('UUID requis');
-
-const STATUSES = ['pending', 'accepted', 'completed', 'declined', 'expired'] as const;
-
-const schema = z.object({
-  challenger_id: uuid,
-  challenged_id: uuid,
-  quiz_id: uuid,
-  status: z.enum(STATUSES),
-  challenger_score: z.coerce.number().int().min(0).optional().nullable(),
-  challenged_score: z.coerce.number().int().min(0).optional().nullable(),
-  winner_id: z.string().uuid().optional().or(z.literal('')),
-  expires_at: z.string().optional().nullable(),
-});
+const schema = z
+  .object({
+    challenger_id: z.string().min(1, 'Sélectionnez le joueur qui lance le défi'),
+    challenged_id: z.string().min(1, 'Sélectionnez le joueur défié'),
+    quiz_id: z.string().min(1, 'Sélectionnez un quiz'),
+    status: z.enum(CHALLENGE_STATUSES),
+    challenger_score: z.coerce.number().int().min(0).optional().nullable(),
+    challenged_score: z.coerce.number().int().min(0).optional().nullable(),
+    winner_id: z.string().optional().or(z.literal('')),
+    expires_at: z.string().optional().nullable(),
+  })
+  .refine((data) => data.challenger_id !== data.challenged_id, {
+    message: 'Les deux joueurs doivent être différents',
+    path: ['challenged_id'],
+  });
 
 type FormValues = z.infer<typeof schema>;
 
@@ -33,26 +44,32 @@ interface Props {
   submitting?: boolean;
 }
 
-function isoToInput(v?: string | null): string {
-  if (!v) return '';
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return '';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function inputToIso(v?: string | null): string | null {
-  if (!v) return null;
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString();
-}
-
 export function ChallengeFormModal({ open, initial, onClose, onSubmit, submitting }: Props) {
+  const profiles = useProfilesQuery({ page: 1, limit: 100 });
+  const quizzes = useQuizzesQuery({ page: 1, limit: 100 });
+
+  const [challengerLabel, setChallengerLabel] = useState<string | null>(null);
+  const [challengedLabel, setChallengedLabel] = useState<string | null>(null);
+  const [quizLabel, setQuizLabel] = useState<string | null>(null);
+
+  const profileById = useMemo(() => {
+    const map = new Map<string, Profile>();
+    (profiles.data?.items ?? []).forEach((p) => map.set(p.id, p));
+    return map;
+  }, [profiles.data?.items]);
+
+  const quizById = useMemo(() => {
+    const map = new Map<string, Quiz>();
+    (quizzes.data?.items ?? []).forEach((q) => map.set(q.id, q));
+    return map;
+  }, [quizzes.data?.items]);
+
   const {
     register,
     handleSubmit,
     reset,
+    control,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -68,8 +85,32 @@ export function ChallengeFormModal({ open, initial, onClose, onSubmit, submittin
     },
   });
 
+  const challengerId = watch('challenger_id');
+  const challengedId = watch('challenged_id');
+
+  const winnerOptions = useMemo(() => {
+    const opts: { value: string; label: string }[] = [{ value: '', label: 'Aucun gagnant' }];
+    if (challengerId && profileById.has(challengerId)) {
+      const p = profileById.get(challengerId)!;
+      opts.push({ value: p.id, label: `Gagnant : ${formatProfileLabel(p)} (lanceur)` });
+    }
+    if (challengedId && profileById.has(challengedId) && challengedId !== challengerId) {
+      const p = profileById.get(challengedId)!;
+      opts.push({ value: p.id, label: `Gagnant : ${formatProfileLabel(p)} (défié)` });
+    }
+    return opts;
+  }, [challengerId, challengedId, profileById]);
+
   useEffect(() => {
     if (open) {
+      const challenger = initial?.challenger_id ? profileById.get(initial.challenger_id) : undefined;
+      const challenged = initial?.challenged_id ? profileById.get(initial.challenged_id) : undefined;
+      const quiz = initial?.quiz_id ? quizById.get(initial.quiz_id) : undefined;
+
+      setChallengerLabel(challenger ? formatProfileLabel(challenger) : null);
+      setChallengedLabel(challenged ? formatProfileLabel(challenged) : null);
+      setQuizLabel(quiz ? formatQuizLabel(quiz) : null);
+
       reset({
         challenger_id: initial?.challenger_id ?? '',
         challenged_id: initial?.challenged_id ?? '',
@@ -78,17 +119,17 @@ export function ChallengeFormModal({ open, initial, onClose, onSubmit, submittin
         challenger_score: initial?.challenger_score ?? null,
         challenged_score: initial?.challenged_score ?? null,
         winner_id: initial?.winner_id ?? '',
-        expires_at: isoToInput(initial?.expires_at),
+        expires_at: isoToDatetimeLocal(initial?.expires_at),
       });
     }
-  }, [open, initial, reset]);
+  }, [open, initial, reset, profileById, quizById]);
 
   return (
     <Modal
       open={open}
       onClose={onClose}
       size="lg"
-      title={initial ? 'Modifier le défi' : 'Nouveau défi'}
+      title={initial ? 'Modifier le duel' : 'Nouveau duel 1v1'}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={submitting}>
@@ -106,7 +147,7 @@ export function ChallengeFormModal({ open, initial, onClose, onSubmit, submittin
                 challenger_score: values.challenger_score ?? null,
                 challenged_score: values.challenged_score ?? null,
                 winner_id: values.winner_id || null,
-                expires_at: inputToIso(values.expires_at),
+                expires_at: datetimeLocalToIso(values.expires_at),
               });
             })}
           >
@@ -116,54 +157,101 @@ export function ChallengeFormModal({ open, initial, onClose, onSubmit, submittin
       }
     >
       <form className="grid gap-4 sm:grid-cols-2">
-        <Input
-          {...register('challenger_id')}
-          label="Challenger (UUID profil)"
-          placeholder="uuid…"
-          error={errors.challenger_id?.message}
+        <Controller
+          control={control}
+          name="challenger_id"
+          render={({ field }) => (
+            <ProfilePickerField
+              label="Joueur qui lance le défi"
+              value={field.value}
+              displayLabel={challengerLabel}
+              excludeIds={challengedId ? [challengedId] : []}
+              onChange={(id, profile) => {
+                field.onChange(id ?? '');
+                setChallengerLabel(profile ? formatProfileLabel(profile) : null);
+              }}
+              error={errors.challenger_id?.message}
+            />
+          )}
         />
-        <Input
-          {...register('challenged_id')}
-          label="Challenged (UUID profil)"
-          placeholder="uuid…"
-          error={errors.challenged_id?.message}
+
+        <Controller
+          control={control}
+          name="challenged_id"
+          render={({ field }) => (
+            <ProfilePickerField
+              label="Joueur défié"
+              value={field.value}
+              displayLabel={challengedLabel}
+              excludeIds={challengerId ? [challengerId] : []}
+              onChange={(id, profile) => {
+                field.onChange(id ?? '');
+                setChallengedLabel(profile ? formatProfileLabel(profile) : null);
+              }}
+              error={errors.challenged_id?.message}
+            />
+          )}
         />
-        <Input
-          {...register('quiz_id')}
-          label="Quiz (UUID)"
-          placeholder="uuid…"
-          error={errors.quiz_id?.message}
-        />
+
+        <div className="sm:col-span-2">
+          <Controller
+            control={control}
+            name="quiz_id"
+            render={({ field }) => (
+              <QuizPickerField
+                label="Quiz du duel"
+                value={field.value}
+                displayLabel={quizLabel}
+                allowClear={false}
+                onChange={(id, quiz) => {
+                  field.onChange(id ?? '');
+                  setQuizLabel(quiz ? formatQuizLabel(quiz) : null);
+                }}
+                error={errors.quiz_id?.message}
+              />
+            )}
+          />
+        </div>
+
         <Select
           {...register('status')}
           label="Statut"
-          options={STATUSES.map((s) => ({ value: s, label: s }))}
+          options={CHALLENGE_STATUSES.map((s) => ({
+            value: s,
+            label: CHALLENGE_STATUS_LABELS[s],
+          }))}
           error={errors.status?.message}
         />
+
+        <Select
+          {...register('winner_id')}
+          label="Gagnant (optionnel)"
+          options={winnerOptions}
+          error={errors.winner_id?.message}
+          hint="Choisissez parmi les deux joueurs du duel."
+        />
+
         <Input
           {...register('challenger_score', { valueAsNumber: true })}
           type="number"
           min={0}
-          label="Score challenger"
+          label="Score du lanceur"
         />
         <Input
           {...register('challenged_score', { valueAsNumber: true })}
           type="number"
           min={0}
-          label="Score challenged"
+          label="Score du défié"
         />
-        <Input
-          {...register('winner_id')}
-          label="Winner (UUID, optionnel)"
-          placeholder="uuid ou vide"
-          error={errors.winner_id?.message}
-        />
-        <Input
-          {...register('expires_at')}
-          type="datetime-local"
-          label="Expire le"
-          error={errors.expires_at?.message ?? undefined}
-        />
+
+        <div className="sm:col-span-2">
+          <Input
+            {...register('expires_at')}
+            type="datetime-local"
+            label="Expire le"
+            error={errors.expires_at?.message ?? undefined}
+          />
+        </div>
       </form>
     </Modal>
   );

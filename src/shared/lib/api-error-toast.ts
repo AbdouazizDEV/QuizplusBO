@@ -12,6 +12,10 @@ const FIELD_LABELS: Record<string, string> = {
   reward_text: 'Récompense',
   scheduled_day: 'Jour planifié',
   day_order: 'Ordre du jour',
+  challenger_id: 'Joueur qui lance',
+  challenged_id: 'Joueur défié',
+  winner_id: 'Gagnant',
+  user_id: 'Destinataire',
 };
 
 export function toastApiError(err: unknown, fallback = 'Une erreur est survenue.'): void {

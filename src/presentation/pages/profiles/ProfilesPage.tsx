@@ -18,6 +18,7 @@ import { SuspendProfileModal } from './SuspendProfileModal';
 import { useDebouncedValue } from '@shared/lib/use-debounced-value';
 import { toastApiError } from '@shared/lib/api-error-toast';
 import { formatDate } from '@shared/lib/format';
+import { formatProfileLabel } from '@shared/lib/profile-label';
 
 export default function ProfilesPage() {
   const [page, setPage] = useState(1);
@@ -49,8 +50,10 @@ export default function ProfilesPage() {
             {(p.username ?? p.full_name ?? '?').slice(0, 2).toUpperCase()}
           </span>
           <div className="min-w-0">
-            <p className="font-bold truncate">{p.username ?? p.full_name ?? '—'}</p>
-            <p className="text-2xs text-muted truncate">{p.full_name && p.username !== p.full_name ? p.full_name : p.id}</p>
+            <p className="font-bold truncate">{formatProfileLabel(p)}</p>
+            <p className="text-2xs text-muted truncate">
+              {p.is_suspended ? 'Compte suspendu' : 'Joueur actif'}
+            </p>
           </div>
         </div>
       ),

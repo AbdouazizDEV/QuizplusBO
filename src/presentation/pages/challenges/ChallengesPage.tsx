@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -7,6 +7,8 @@ import {
   useDeleteChallenge,
   useUpdateChallenge,
 } from '@application/challenges/use-challenges';
+import { useProfilesQuery } from '@application/profiles/use-profiles';
+import { useQuizzesQuery } from '@application/quizzes/use-quizzes';
 import type { Challenge, ChallengeStatus } from '@domain/entities/challenge';
 import { PageHeader } from '@presentation/components/data/PageHeader';
 import { DataTable, type Column } from '@presentation/components/data/DataTable';
@@ -17,23 +19,18 @@ import { ConfirmDialog } from '@presentation/components/feedback/ConfirmDialog';
 import { ChallengeFormModal } from './ChallengeFormModal';
 import { toastApiError } from '@shared/lib/api-error-toast';
 import { formatDate } from '@shared/lib/format';
-
-const STATUS_TONE: Record<string, 'info' | 'success' | 'warning' | 'danger' | 'neutral'> = {
-  pending: 'info',
-  accepted: 'warning',
-  completed: 'success',
-  declined: 'danger',
-  expired: 'neutral',
-};
-
-function shortId(v?: string | null): string {
-  if (!v) return '—';
-  return `${v.slice(0, 4)}…${v.slice(-4)}`;
-}
+import { formatProfileLabel } from '@shared/lib/profile-label';
+import { formatQuizLabel } from '@shared/lib/quiz-label';
+import {
+  CHALLENGE_STATUS_LABELS,
+  CHALLENGE_STATUS_TONES,
+} from '@shared/lib/challenge-status';
 
 export default function ChallengesPage() {
   const [page, setPage] = useState(1);
   const list = useChallengesQuery({ page, limit: 20 });
+  const profiles = useProfilesQuery({ page: 1, limit: 100 });
+  const quizzes = useQuizzesQuery({ page: 1, limit: 100 });
   const createM = useCreateChallenge();
   const updateM = useUpdateChallenge();
   const deleteM = useDeleteChallenge();
@@ -41,6 +38,18 @@ export default function ChallengesPage() {
   const [editing, setEditing] = useState<Challenge | null>(null);
   const [openForm, setOpenForm] = useState(false);
   const [toDelete, setToDelete] = useState<Challenge | null>(null);
+
+  const profileLabelById = useMemo(() => {
+    const map = new Map<string, string>();
+    (profiles.data?.items ?? []).forEach((p) => map.set(p.id, formatProfileLabel(p)));
+    return map;
+  }, [profiles.data?.items]);
+
+  const quizLabelById = useMemo(() => {
+    const map = new Map<string, string>();
+    (quizzes.data?.items ?? []).forEach((q) => map.set(q.id, formatQuizLabel(q)));
+    return map;
+  }, [quizzes.data?.items]);
 
   const onCreate = () => {
     setEditing(null);
@@ -57,19 +66,31 @@ export default function ChallengesPage() {
       header: 'Joueurs',
       cell: (c) => (
         <div className="text-sm">
-          <span className="font-bold">{shortId(c.challenger_id)}</span>
+          <span className="font-bold">
+            {profileLabelById.get(c.challenger_id) ?? 'Joueur inconnu'}
+          </span>
           <span className="px-1.5 text-muted">vs</span>
-          <span className="font-bold">{shortId(c.challenged_id)}</span>
+          <span className="font-bold">
+            {profileLabelById.get(c.challenged_id) ?? 'Joueur inconnu'}
+          </span>
         </div>
       ),
     },
-    { key: 'quiz', header: 'Quiz', cell: (c) => <code className="text-xs text-muted">{shortId(c.quiz_id)}</code>, width: '160px' },
+    {
+      key: 'quiz',
+      header: 'Quiz',
+      cell: (c) => (
+        <span className="text-sm">{quizLabelById.get(c.quiz_id) ?? 'Quiz inconnu'}</span>
+      ),
+    },
     {
       key: 'status',
       header: 'Statut',
       width: '140px',
       cell: (c) => (
-        <Badge tone={STATUS_TONE[String(c.status)] ?? 'neutral'}>{String(c.status)}</Badge>
+        <Badge tone={CHALLENGE_STATUS_TONES[String(c.status) as ChallengeStatus] ?? 'neutral'}>
+          {CHALLENGE_STATUS_LABELS[String(c.status) as ChallengeStatus] ?? String(c.status)}
+        </Badge>
       ),
     },
     {
@@ -80,6 +101,16 @@ export default function ChallengesPage() {
         <span className="tabular-nums text-sm">
           {c.challenger_score ?? '—'} <span className="text-muted">·</span>{' '}
           {c.challenged_score ?? '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'winner',
+      header: 'Gagnant',
+      width: '180px',
+      cell: (c) => (
+        <span className="text-sm text-muted">
+          {c.winner_id ? profileLabelById.get(c.winner_id) ?? '—' : '—'}
         </span>
       ),
     },
@@ -117,11 +148,11 @@ export default function ChallengesPage() {
     <div className="space-y-6">
       <PageHeader
         breadcrumb="Contenus"
-        title="Défis"
-        description="Suivez et gérez les défis lancés entre joueurs."
+        title="Duels 1v1"
+        description="Gérez les défis lancés entre deux joueurs sur un quiz."
         actions={
           <Button variant="gradient" leftIcon={<Plus className="h-4 w-4" />} onClick={onCreate}>
-            Nouveau défi
+            Nouveau duel
           </Button>
         }
       />
@@ -133,8 +164,8 @@ export default function ChallengesPage() {
         loading={list.isLoading}
         error={list.error}
         onRetry={() => list.refetch()}
-        emptyTitle="Aucun défi"
-        emptyDescription="Créez un défi de test ou attendez les premiers défis utilisateurs."
+        emptyTitle="Aucun duel"
+        emptyDescription="Créez un duel de test ou attendez les premiers défis entre joueurs."
       />
 
       <Pagination
@@ -153,13 +184,13 @@ export default function ChallengesPage() {
           try {
             if (editing) {
               await updateM.mutateAsync({ id: editing.id, input: values });
-              toast.success('Défi mis à jour');
+              toast.success('Duel mis à jour');
             } else {
               await createM.mutateAsync({
                 ...values,
                 status: (values.status ?? 'pending') as ChallengeStatus,
               });
-              toast.success('Défi créé');
+              toast.success('Duel créé');
             }
             setOpenForm(false);
           } catch (err) {
@@ -170,7 +201,7 @@ export default function ChallengesPage() {
 
       <ConfirmDialog
         open={!!toDelete}
-        title="Supprimer ce défi ?"
+        title="Supprimer ce duel ?"
         description="Cette action est irréversible."
         destructive
         loading={deleteM.isPending}
@@ -179,7 +210,7 @@ export default function ChallengesPage() {
           if (!toDelete) return;
           try {
             await deleteM.mutateAsync(toDelete.id);
-            toast.success('Défi supprimé');
+            toast.success('Duel supprimé');
             setToDelete(null);
           } catch (err) {
             toastApiError(err);

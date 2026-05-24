@@ -12,6 +12,7 @@ import { ErrorState } from '@presentation/components/feedback/ErrorState';
 import { SuspendProfileModal } from './SuspendProfileModal';
 import { toastApiError } from '@shared/lib/api-error-toast';
 import { formatDate } from '@shared/lib/format';
+import { formatProfileLabel } from '@shared/lib/profile-label';
 
 export default function ProfileDetailPage() {
   const { profileId = '' } = useParams<{ profileId: string }>();
@@ -52,7 +53,7 @@ export default function ProfileDetailPage() {
           </Link>
         }
         title={profile.username ?? profile.full_name ?? 'Profil'}
-        description={`ID • ${profile.id}`}
+        description={formatProfileLabel(profile)}
         actions={
           <>
             <Link to={`/notifications?user_id=${profile.id}`}>
