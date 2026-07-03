@@ -83,7 +83,7 @@ export default function LoginPage() {
           <Logo size={48} />
           <div>
             <h1 className="text-4xl font-black leading-tight tracking-tight text-foreground sm:text-5xl">
-              Pilotez l'univers <span className="quizz-gradient-text">Quizz+</span>
+              Pilotez l&apos;univers <span className="quizz-gradient-text">Quizz+</span>
               <br />
               avec puissance & élégance.
             </h1>
@@ -159,10 +159,10 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <p className="mt-5 text-center text-2xs text-muted">
+           {/* <p className="mt-5 text-center text-2xs text-muted">
               Identifiants gérés via les variables <code>VITE_ADMIN_EMAIL</code> /{' '}
               <code>VITE_ADMIN_PASSWORD</code>.
-            </p>
+            </p> */}
           </div>
         </div>
       </div>

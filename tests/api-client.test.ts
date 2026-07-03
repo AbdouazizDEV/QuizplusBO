@@ -23,7 +23,7 @@ describe('ApiClient', () => {
     vi.restoreAllMocks();
   });
 
-  it('GET injecte le header x-api-key et parse le JSON', async () => {
+  it('GET injecte Authorization Bearer et parse le JSON', async () => {
     const mock = vi.fn(async (_url: unknown, init?: RequestInit) => {
       const headers = new Headers(init?.headers);
       expect(headers.get('Accept')).toBe('application/json');
@@ -68,7 +68,7 @@ describe('ApiClient', () => {
     } catch (err) {
       expect(ApiError.is(err)).toBe(true);
       if (ApiError.is(err)) {
-        expect(err.fieldErrors).toEqual({ name: ['Required'] });
+        expect(err.fieldErrors).toEqual({ name: ['name est requis.'] });
       }
     }
   });

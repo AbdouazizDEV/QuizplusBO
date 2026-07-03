@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Plus, Pencil, Trash2, Upload, Search, Eye, Sparkles, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Plus, Pencil, Trash2, Search, Eye, Sparkles, X } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   useCreateQuiz,
@@ -21,12 +21,12 @@ import { Select } from '@presentation/components/ui/Select';
 import { Badge } from '@presentation/components/ui/Badge';
 import { ConfirmDialog } from '@presentation/components/feedback/ConfirmDialog';
 import { QuizFormModal } from './QuizFormModal';
-import { QuizImportModal } from './QuizImportModal';
 import { useDebouncedValue } from '@shared/lib/use-debounced-value';
 import { toastApiError } from '@shared/lib/api-error-toast';
 import { truncate } from '@shared/lib/format';
 
 export default function QuizzesPage() {
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -57,7 +57,6 @@ export default function QuizzesPage() {
 
   const [editing, setEditing] = useState<Quiz | null>(null);
   const [openForm, setOpenForm] = useState(false);
-  const [openImport, setOpenImport] = useState(false);
   const [toDelete, setToDelete] = useState<Quiz | null>(null);
 
   const categoryNameById = useMemo(() => {
@@ -168,20 +167,11 @@ export default function QuizzesPage() {
       <PageHeader
         breadcrumb="Contenus"
         title="Quiz"
-        description="Gérez votre catalogue, importez en masse, modifiez les statuts."
+        description="Gérez votre catalogue et modifiez les statuts. Les questions s'ajoutent depuis la fiche détail."
         actions={
-          <>
-            <Button
-              variant="secondary"
-              leftIcon={<Upload className="h-4 w-4" />}
-              onClick={() => setOpenImport(true)}
-            >
-              Importer
-            </Button>
-            <Button variant="gradient" leftIcon={<Plus className="h-4 w-4" />} onClick={onCreate}>
-              Nouveau quiz
-            </Button>
-          </>
+          <Button variant="gradient" leftIcon={<Plus className="h-4 w-4" />} onClick={onCreate}>
+            Nouveau quiz
+          </Button>
         }
       />
 
@@ -260,7 +250,7 @@ export default function QuizzesPage() {
         emptyDescription={
           hasFilters
             ? 'Essayez d’ajuster vos filtres ou votre recherche.'
-            : 'Créez votre premier quiz ou importez-en plusieurs depuis un fichier CSV/XLSX.'
+            : 'Créez votre premier quiz, puis ajoutez les questions depuis sa fiche détail.'
         }
         emptyAction={
           hasFilters ? null : (
@@ -292,22 +282,19 @@ export default function QuizzesPage() {
               await updateM.mutateAsync({ id: editing.id, input: values });
               toast.success('Quiz mis à jour');
             } else {
-              await createM.mutateAsync(values);
-              toast.success('Quiz créé');
+              const created = await createM.mutateAsync(values);
+              toast.success('Quiz créé', {
+                description: 'Ajoutez maintenant les questions depuis la fiche détail.',
+              });
+              setOpenForm(false);
+              navigate(`/quizzes/${created.id}`);
+              return;
             }
             setOpenForm(false);
           } catch (err) {
             toastApiError(err);
           }
         }}
-      />
-
-      <QuizImportModal
-        open={openImport}
-        onClose={() => setOpenImport(false)}
-        categories={cats.data ?? []}
-        subcategories={subs.data ?? []}
-        levels={lvls.data ?? []}
       />
 
       <ConfirmDialog

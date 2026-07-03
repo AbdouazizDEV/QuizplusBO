@@ -40,6 +40,7 @@ import { ErrorState } from '@presentation/components/feedback/ErrorState';
 import { QuizFormModal } from './QuizFormModal';
 import { QuestionFormModal } from './QuestionFormModal';
 import { toastApiError } from '@shared/lib/api-error-toast';
+import { validateQuizImportFile } from '@shared/lib/quiz-import-file';
 
 export default function QuizDetailPage() {
   const { quizId = '' } = useParams<{ quizId: string }>();
@@ -88,6 +89,20 @@ export default function QuizDetailPage() {
 
   const handleImportFile = async (file: File) => {
     if (!quiz) return;
+
+    const categoryName = cats.data?.find((c) => c.id === quiz.category_id)?.name ?? '';
+    const subcategoryName = subs.data?.find((s) => s.id === quiz.subcategory_id)?.name ?? '';
+
+    const validation = await validateQuizImportFile(file, {
+      difficultyLevel: quiz.difficulty_level,
+      categoryName,
+      subcategoryName,
+    });
+    if (!validation.ok) {
+      toast.error('Import refusé', { description: validation.message });
+      return;
+    }
+
     try {
       const res = await importInto.mutateAsync({ quizId: quiz.id, file });
       toast.success('Import réussi', {
@@ -180,7 +195,7 @@ export default function QuizDetailPage() {
       <Card>
         <CardHeader
           title="Questions"
-          description="Modifiez et complétez les questions de ce quiz."
+          description="Modifiez et complétez les questions de ce quiz (import XLSX/CSV ou saisie manuelle)."
           actions={
             <>
               <Button

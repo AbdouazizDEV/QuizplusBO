@@ -65,11 +65,10 @@ export class ApiClient {
 
     const apiKey = getApiKey();
     if (apiKey) {
-      // Le backend accepte indifféremment `x-api-key` ou `Authorization: Bearer <key>`.
-      // On envoie les deux : `Authorization` est autorisé par défaut dans les preflights CORS,
-      // ce qui évite de devoir whitelister `x-api-key` côté serveur en production.
+      // Le backend accepte `x-api-key` ou `Authorization: Bearer <key>`.
+      // On n'envoie que `Authorization` : le serveur CORS autorise Content-Type + Authorization
+      // (voir server/src/index.ts). Envoyer `x-api-key` ferait échouer le preflight navigateur.
       finalHeaders['Authorization'] = `Bearer ${apiKey}`;
-      finalHeaders['x-api-key'] = apiKey;
     }
 
     let payload: BodyInit | undefined;
