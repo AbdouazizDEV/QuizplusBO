@@ -4,8 +4,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  /** Toutes les variables VITE_* sont lues depuis `environments/` (voir `environments/README.md`). */
-  envDir: path.resolve(__dirname, 'environments'),
+  envDir: __dirname,
   plugins: [react()],
   resolve: {
     alias: {
@@ -18,8 +17,14 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
-    strictPort: false,
+    port: 5174,
+    strictPort: true,
+    headers: {
+      'Cache-Control': 'no-store',
+    },
+  },
+  optimizeDeps: {
+    force: true,
   },
   test: {
     environment: 'jsdom',

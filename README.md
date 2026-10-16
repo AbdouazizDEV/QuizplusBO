@@ -58,8 +58,8 @@ npm run dev:prod
 Le backend Quizz+ expose le backoffice sous **`/api/v1/backoffice`**.  
 `VITE_API_BASE_URL` doit donc se terminer par ce chemin, par exemple :
 
+- Production (défaut) : `https://api.quizzp.com/api/v1/backoffice`
 - Local : `http://localhost:3000/api/v1/backoffice`
-- Production (Render) : `https://quizzplus-api.onrender.com/api/v1/backoffice`
 
 ## Variables d'environnement
 
@@ -197,7 +197,8 @@ npm run build  # génère dist/ (charge environments/.env.production)
 npm run preview
 ```
 
-Sur Render / Vercel / GitHub Actions, définissez les mêmes variables `VITE_*` que dans `environments/.env.production` (ou surpassez-les dans l’UI du service). L’URL API production par défaut est : `https://quizzplus-api.onrender.com/api/v1/backoffice`.
+Sur Vercel / Netlify / Cloudflare Pages / GitHub Actions, définissez les variables `VITE_*`.
+L’URL API production est : `https://api.quizzp.com/api/v1/backoffice` (même `VITE_BACKOFFICE_API_KEY` que `BACKOFFICE_API_KEY` côté Nest).
 
 Le backoffice est une SPA statique : déployable sur Vercel, Netlify, Cloudflare Pages, S3+CloudFront, ou tout reverse-proxy (Nginx) capable de servir un fichier `index.html` en fallback (history mode).
 

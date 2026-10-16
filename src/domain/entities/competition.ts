@@ -6,6 +6,7 @@ export interface Competition {
   description?: string | null;
   quiz_id?: string | null;
   category_id?: string | null;
+  max_participants?: number | null;
   status: CompetitionStatus | string;
   starts_at?: string | null;
   ends_at?: string | null;
@@ -17,6 +18,7 @@ export interface CreateCompetitionInput {
   description?: string | null;
   quiz_id?: string | null;
   category_id?: string | null;
+  max_participants?: number;
   status: CompetitionStatus;
   starts_at?: string | null;
   ends_at?: string | null;

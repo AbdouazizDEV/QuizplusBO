@@ -2,39 +2,25 @@ import { describe, expect, it } from 'vitest';
 import { validateQuizImportRows } from '@shared/lib/quiz-import-file';
 
 describe('validateQuizImportRows', () => {
-  const baseRows = [
-    { difficulty: 'Z1', category: 'Culture générale', subcategory: 'Histoire' },
-    { difficulty: 'Z1', category: 'Culture générale', subcategory: 'Histoire' },
-  ];
-
-  it('accepte un fichier homogène conforme au quiz', () => {
-    const res = validateQuizImportRows(baseRows, {
-      difficultyLevel: 'Z1',
-      categoryName: 'Culture générale',
-      subcategoryName: 'Histoire',
-    });
+  it('accepte un fichier avec des difficultés mixtes', () => {
+    const res = validateQuizImportRows(
+      [
+        { difficulty: 'Z0', category: 'Vie quotidienne', subcategory: 'Cuisine & Santé' },
+        { difficulty: 'Z1', category: 'Vie quotidienne', subcategory: 'Cuisine & Santé' },
+        { difficulty: 'Z2', category: 'Autre', subcategory: 'Autre' },
+      ],
+      {
+        difficultyLevel: 'Z0',
+        categoryName: 'Vie quotidienne',
+        subcategoryName: 'Cuisine & Santé',
+      },
+    );
     expect(res.ok).toBe(true);
   });
 
-  it('refuse plusieurs difficultés', () => {
-    const res = validateQuizImportRows(
-      [
-        { difficulty: 'Z1', category: 'Culture générale', subcategory: 'Histoire' },
-        { difficulty: 'Z2', category: 'Culture générale', subcategory: 'Histoire' },
-      ],
-      undefined,
-    );
+  it('refuse un fichier sans questions', () => {
+    const res = validateQuizImportRows([]);
     expect(res.ok).toBe(false);
-    if (!res.ok) expect(res.message).toMatch(/plusieurs niveaux de difficulté/i);
-  });
-
-  it('refuse une catégorie différente du quiz', () => {
-    const res = validateQuizImportRows(baseRows, {
-      difficultyLevel: 'Z1',
-      categoryName: 'Sport',
-      subcategoryName: 'Histoire',
-    });
-    expect(res.ok).toBe(false);
-    if (!res.ok) expect(res.message).toMatch(/catégorie/i);
+    if (!res.ok) expect(res.message).toMatch(/aucune question/i);
   });
 });

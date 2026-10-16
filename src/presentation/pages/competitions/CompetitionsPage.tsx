@@ -119,6 +119,12 @@ export default function CompetitionsPage() {
       ),
     },
     {
+      key: 'max_participants',
+      header: 'Places',
+      width: '100px',
+      cell: (c) => <span className="text-sm tabular-nums">{c.max_participants ?? 32}</span>,
+    },
+    {
       key: 'quiz',
       header: 'Quiz',
       cell: (c) => (

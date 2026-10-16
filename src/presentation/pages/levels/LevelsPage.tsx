@@ -17,6 +17,37 @@ import { LevelFormModal } from './LevelFormModal';
 import { toastApiError } from '@shared/lib/api-error-toast';
 import { formatNumber } from '@shared/lib/format';
 
+function LevelMark({ code }: { code: string }) {
+  const badge = LEVEL_MARKS.find((item) => item.code === code) ?? {
+    mark: '•',
+    tint: '#E5E7EB',
+  };
+  return (
+    <span
+      className="inline-flex h-8 min-w-10 items-center justify-center rounded-full px-2 text-sm font-black tracking-wide text-[#1A1A2E] ring-1 ring-[#1A1A2E]/35"
+      style={{ background: badge.tint }}
+      title={`Badge ${code}`}
+    >
+      {badge.mark}
+    </span>
+  );
+}
+
+const LEVEL_MARKS = [
+  { code: 'Z0', mark: 'I', tint: '#7DCEA0' },
+  { code: 'Z1', mark: 'II', tint: '#5DADE2' },
+  { code: 'Z2', mark: 'III', tint: '#F5B041' },
+  { code: 'Z3', mark: 'IV', tint: '#BB8FCE' },
+  { code: 'A1', mark: 'V', tint: '#E59866' },
+  { code: 'A2', mark: 'VI', tint: '#EC7063' },
+  { code: 'A3', mark: 'VII', tint: '#F4D03F' },
+  { code: 'B1', mark: 'VIII', tint: '#F5CBA7' },
+  { code: 'B2', mark: 'IX', tint: '#76D7C4' },
+  { code: 'B3', mark: 'X', tint: '#85C1E9' },
+  { code: 'B4', mark: 'XI', tint: '#F1948A' },
+  { code: 'B5', mark: 'XII', tint: '#D7BDE2' },
+];
+
 export default function LevelsPage() {
   const list = useLevelsQuery();
   const createM = useCreateLevel();
@@ -40,7 +71,12 @@ export default function LevelsPage() {
     {
       key: 'code',
       header: 'Code',
-      cell: (l) => <Badge tone="brand">{l.code}</Badge>,
+      cell: (l) => (
+        <span className="inline-flex items-center gap-2">
+          <LevelMark code={l.code} />
+          <Badge tone="brand">{l.code}</Badge>
+        </span>
+      ),
       width: '110px',
     },
     {

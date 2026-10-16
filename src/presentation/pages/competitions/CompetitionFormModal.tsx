@@ -27,6 +27,7 @@ const schema = z
     description: z.string().trim().max(500).optional().nullable(),
     quiz_id: z.string().nullable().optional(),
     category_id: z.string().nullable().optional(),
+    max_participants: z.coerce.number().int().min(2, 'Min. 2').max(128, 'Max. 128'),
     status: z.enum(COMPETITION_STATUSES),
     starts_at: z.string().min(1, 'La date de début est requise'),
     ends_at: z.string().min(1, 'La date de fin est requise'),
@@ -38,6 +39,18 @@ const schema = z
       return new Date(data.ends_at).getTime() > new Date(data.starts_at).getTime();
     },
     { message: 'La date de fin doit être strictement après la date de début', path: ['ends_at'] },
+  )
+  .refine(
+    (data) => {
+      if (data.status === 'scheduled' || data.status === 'live') {
+        return Boolean(data.category_id);
+      }
+      return true;
+    },
+    {
+      message: 'La catégorie est requise pour ouvrir ou démarrer un tournoi',
+      path: ['category_id'],
+    },
   );
 
 type FormValues = z.infer<typeof schema>;
@@ -75,6 +88,7 @@ export function CompetitionFormModal({ open, initial, onClose, onSubmit, submitt
       description: '',
       quiz_id: null,
       category_id: null,
+      max_participants: 32,
       status: 'draft',
       starts_at: '',
       ends_at: '',
@@ -93,6 +107,7 @@ export function CompetitionFormModal({ open, initial, onClose, onSubmit, submitt
         description: initial?.description ?? '',
         quiz_id: initial?.quiz_id ?? null,
         category_id: initial?.category_id ?? null,
+        max_participants: initial?.max_participants ?? 32,
         status: (initial?.status as CompetitionStatus) ?? 'draft',
         starts_at: isoToDatetimeLocal(initial?.starts_at),
         ends_at: isoToDatetimeLocal(initial?.ends_at),
@@ -127,6 +142,7 @@ export function CompetitionFormModal({ open, initial, onClose, onSubmit, submitt
                 description: values.description || null,
                 quiz_id: values.quiz_id || null,
                 category_id: values.category_id || null,
+                max_participants: values.max_participants,
                 status: values.status,
                 starts_at: datetimeLocalToIso(values.starts_at),
                 ends_at: datetimeLocalToIso(values.ends_at),
@@ -179,13 +195,22 @@ export function CompetitionFormModal({ open, initial, onClose, onSubmit, submitt
           name="category_id"
           render={({ field }) => (
             <CategoryPickerField
-              label="Catégorie (optionnel)"
+              label="Catégorie (requise pour inscriptions / live)"
               value={field.value}
               onChange={field.onChange}
               error={errors.category_id?.message}
               hint={categories.isLoading ? 'Chargement des catégories…' : undefined}
             />
           )}
+        />
+
+        <Input
+          {...register('max_participants')}
+          type="number"
+          min={2}
+          max={128}
+          label="Participants max"
+          error={errors.max_participants?.message}
         />
 
         <Select
