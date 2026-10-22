@@ -55,14 +55,14 @@ export default function ArenaAccessPage() {
   const generate = async () => {
     setBusy(true);
     try {
-      const { data } = await apiClient.post(Endpoints.arena.bankGenerate, {
+      const created = await apiClient.post<{ questions?: unknown[] }>(Endpoints.arena.bankGenerate, {
         author_id: userId.trim(),
         universe,
         difficulty: difficulty.trim() || 'Z0',
         count,
       });
-      const created = Array.isArray(data?.questions) ? data.questions.length : 0;
-      toast.success(`${created} brouillon${created > 1 ? 's' : ''} créé${created > 1 ? 's' : ''}. Un autre relecteur doit les valider.`);
+      const drafts = Array.isArray(created.questions) ? created.questions.length : 0;
+      toast.success(`${drafts} brouillon${drafts > 1 ? 's' : ''} créé${drafts > 1 ? 's' : ''}. Un autre relecteur doit les valider.`);
     } catch (error) {
       toastApiError(error);
     } finally {
@@ -73,9 +73,13 @@ export default function ArenaAccessPage() {
   const loadCoverage = async () => {
     setBusy(true);
     try {
-      const { data } = await apiClient.get(Endpoints.arena.bankCoverage);
-      const ready = (data?.universes ?? []).filter((item: { digital_ready?: boolean }) => item.digital_ready).length;
-      setCoverage(`${data?.validated ?? 0} validées, ${data?.reserve ?? 0} en réserve, ${ready}/5 univers prêts pour le digital.`);
+      const report = await apiClient.get<{
+        validated?: number;
+        reserve?: number;
+        universes?: Array<{ digital_ready?: boolean }>;
+      }>(Endpoints.arena.bankCoverage);
+      const ready = (report.universes ?? []).filter((item) => item.digital_ready).length;
+      setCoverage(`${report.validated ?? 0} validées, ${report.reserve ?? 0} en réserve, ${ready}/5 univers prêts pour le digital.`);
     } catch (error) {
       toastApiError(error);
     } finally {
