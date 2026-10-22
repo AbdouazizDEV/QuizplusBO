@@ -55,6 +55,12 @@ export const Endpoints = {
     quizzes: (id: string) => `/weekly-challenges/${id}/quizzes`,
     quizLink: (id: string, linkId: string) => `/weekly-challenges/${id}/quizzes/${linkId}`,
   },
+  arena: {
+    grantRole: '/arena/roles',
+    verifyIdentity: (registrationId: string) => `/arena/registrations/${registrationId}/identity`,
+    bankCoverage: '/arena/bank/coverage',
+    bankGenerate: '/arena/bank/generate',
+  },
   profiles: {
     list: '/profiles',
     detail: (id: string) => `/profiles/${id}`,
